@@ -3,19 +3,21 @@ const router = express.Router();
 const contactsController = require("../../controllers/contacts");
 const { validateContact } = require("../../middlewares/validation");
 
-// GET /api/contacts
-router.get("/", contactsController.listContacts);
+// GET all contacts
+router.get("/", contactsController.getAllContacts);
 
-// GET /api/contacts/:id
-router.get("/:id", contactsController.getContactById);
+// GET contact by ID
+router.get("/:contactId", contactsController.getContactById);
 
-// POST /api/contacts
 router.post("/", validateContact, contactsController.addContact);
 
-// DELETE /api/contacts/:id
-router.delete("/:id", contactsController.removeContact);
+// DELETE contact
+router.delete("/:contactId", contactsController.removeContact);
 
-// PUT /api/contacts/:id
-router.put("/:id", validateContact, contactsController.updateContact);
+// PUT update contact
+router.put("/:contactId", validateContact, contactsController.updateContact);
+
+// PATCH update favorite status
+router.patch("/:contactId/favorite", contactsController.updateFavorite);
 
 module.exports = router;
