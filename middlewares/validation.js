@@ -40,6 +40,51 @@ const schemas = {
       }),
     favorite: Joi.boolean(),
   }),
+
+  avatar: Joi.object({
+    file: Joi.object({
+      mimetype: Joi.string()
+        .valid("image/jpeg", "image/png", "image/gif")
+        .required()
+        .messages({
+          "any.only": "File format must be jpeg, png or gif",
+          "any.required": "File is required",
+        }),
+      size: Joi.number()
+        .max(5 * 1024 * 1024)
+        .required()
+        .messages({
+          "number.max": "File size must not exceed 5MB",
+          "any.required": "File size is required",
+        }),
+    }),
+  }),
+
+  avatarURL: Joi.object({
+    avatarURL: Joi.string().uri().required().messages({
+      "string.uri": "Avatar URL must be a valid URI",
+      "any.required": "Avatar URL is required",
+    }),
+  }),
+};
+
+const validateAvatar = (req, res, next) => {
+  if (!req.file) {
+    return res.status(400).json({ message: "Avatar file is required" });
+  }
+
+  const { mimetype, size } = req.file;
+
+  try {
+    schemas.avatar.validateAsync({
+      file: { mimetype, size },
+    });
+    next();
+  } catch (err) {
+    return res.status(400).json({
+      message: err.details ? err.details[0].message : err.message,
+    });
+  }
 };
 
 // Oryginalna funkcja walidacji dla kontaktów
@@ -75,5 +120,6 @@ module.exports = {
   validateContact,
   validateAuth: validate(schemas.auth),
   validateSubscription: validate(schemas.subscription),
+  validateAvatar,
   schemas,
 };
