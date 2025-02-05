@@ -28,4 +28,7 @@ router.patch(
   usersController.updateAvatar
 );
 
+router.get("/verify/:verificationToken", usersController.verifyEmail);
+router.post("/verify", usersController.resendVerificationEmail);
+
 module.exports = router;
