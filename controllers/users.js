@@ -6,6 +6,7 @@ const { Jimp } = require("jimp");
 const path = require("path");
 const fs = require("fs/promises");
 const { v4: uuidv4 } = require("uuid");
+const { sendVerificationEmail } = require("../helpers/emailService");
 
 const usersController = {
   async signup(req, res, next) {
@@ -23,13 +24,20 @@ const usersController = {
         d: "identicon",
       });
 
+      const verificationToken = uuidv4();
       const hashedPassword = await bcrypt.hash(password, 8);
+
       const user = new User({
         email,
         password: hashedPassword,
         avatarURL,
+        verificationToken,
+        verify: false,
       });
       await user.save();
+
+      // Wysyłamy email weryfikacyjny
+      await sendVerificationEmail(email, verificationToken);
 
       res.status(201).json({
         user: {
@@ -55,6 +63,13 @@ const usersController = {
         });
       }
 
+      // Sprawdzamy czy email został zweryfikowany
+      if (!user.verify) {
+        return res.status(401).json({
+          message: "Email not verified",
+        });
+      }
+
       const isValidPassword = await bcrypt.compare(password, user.password);
 
       if (!isValidPassword) {
@@ -76,6 +91,55 @@ const usersController = {
           avatarURL: user.avatarURL,
         },
       });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async verifyEmail(req, res, next) {
+    try {
+      const { verificationToken } = req.params;
+      const user = await User.findOne({ verificationToken });
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      await User.findByIdAndUpdate(user._id, {
+        verify: true,
+        verificationToken: null,
+      });
+
+      res.status(200).json({ message: "Verification successful" });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async resendVerificationEmail(req, res, next) {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res
+          .status(400)
+          .json({ message: "missing required field email" });
+      }
+
+      const user = await User.findOne({ email });
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (user.verify) {
+        return res
+          .status(400)
+          .json({ message: "Verification has already been passed" });
+      }
+
+      await sendVerificationEmail(email, user.verificationToken);
+      res.status(200).json({ message: "Verification email sent" });
     } catch (error) {
       next(error);
     }
